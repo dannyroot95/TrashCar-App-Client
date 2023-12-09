@@ -1,12 +1,17 @@
 package com.optic.uberclonekotlin.activities
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
+import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import com.optic.uberclonekotlin.databinding.ActivityMainBinding
 import com.optic.uberclonekotlin.providers.AuthProvider
 import com.optic.uberclonekotlin.providers.ClientProvider
@@ -26,6 +31,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
 
+        if(!isGpsEnabled(this)){
+            showEnableGpsDialog(this)
+        }
 
         binding.btnRegister.setOnClickListener { goToRegister() }
         binding.btnLogin.setOnClickListener { login() }
@@ -111,5 +119,28 @@ class MainActivity : AppCompatActivity() {
             goToMap()
         }
     }
+
+    @SuppressLint("ServiceCast")
+    private fun isGpsEnabled(context: Context): Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+    }
+    private fun showEnableGpsDialog(context: Context) {
+        val builder = AlertDialog.Builder(context)
+        builder.setTitle("Activar GPS")
+            .setMessage("El GPS está desactivado. ¿Desea activarlo?")
+            .setPositiveButton("Sí") { dialog, _ ->
+                // Abre la pantalla de configuración del GPS
+                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                context.startActivity(intent)
+                dialog.dismiss()
+            }
+            .setNegativeButton("No") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
 
 }

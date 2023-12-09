@@ -19,6 +19,8 @@ import com.optic.uberclonekotlin.models.Booking
 import com.optic.uberclonekotlin.models.Client
 import com.optic.uberclonekotlin.models.Driver
 import com.optic.uberclonekotlin.providers.*
+import com.optic.uberclonekotlin.services.TrashCarService
+import com.optic.uberclonekotlin.utils.RelativeTime.stopService
 
 class ModalBottomSheetMenu: BottomSheetDialogFragment() {
 
@@ -62,6 +64,8 @@ class ModalBottomSheetMenu: BottomSheetDialogFragment() {
 
     private fun goToMain() {
         authProvider.logout()
+        val serviceIntent = Intent(activity, TrashCarService::class.java)
+        activity?.stopService(serviceIntent)
         val i = Intent(activity, MainActivity::class.java)
         i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(i)
