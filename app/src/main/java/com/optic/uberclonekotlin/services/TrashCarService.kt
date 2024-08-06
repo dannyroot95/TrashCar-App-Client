@@ -2,7 +2,10 @@ package com.optic.uberclonekotlin.services
 
 import android.annotation.SuppressLint
 import android.app.*
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.location.Location
 import android.os.Build
@@ -32,6 +35,7 @@ class TrashCarService : Service(),Listener {
     private var easyWayLocation: EasyWayLocation? = null
     private var myLocationLatLng: LatLng? = null
     private val NOTIFICATION_ID = 12
+    private var isNotificationSent = false
 
     private val locationRequest = LocationRequest.create().apply {
         interval = 0
@@ -80,8 +84,9 @@ class TrashCarService : Service(),Listener {
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onKeyEntered(documentID: String, location: GeoPoint) {
                 val driverLatLng = LatLng(location.latitude,location.longitude)
-                if (isNearby(myLocationLatLng, driverLatLng, 1.5)) {
+                if (isNearby(myLocationLatLng, driverLatLng, 1.5) && !isNotificationSent) {
                     sendNotification()
+                    isNotificationSent = true
                     //sendNotification("Conductor cercano", "Hay un conductor cerca de ti.")
                 }
             }
@@ -92,8 +97,9 @@ class TrashCarService : Service(),Listener {
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onKeyMoved(documentID: String, location: GeoPoint) {
                 val driverLatLng = LatLng(location.latitude,location.longitude)
-                if (isNearby(myLocationLatLng, driverLatLng, 1.5)) {
+                if (isNearby(myLocationLatLng, driverLatLng, 1.5) && !isNotificationSent) {
                     sendNotification()
+                    isNotificationSent = true
                     Log.d("ISNEAR", "CERCA")
                     //sendNotification("Conductor cercano", "Hay un conductor cerca de ti.")
                 }else{
@@ -157,8 +163,10 @@ class TrashCarService : Service(),Listener {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(notificationDismissedReceiver)
         isServiceRunning = false
         easyWayLocation?.endUpdates()
+        isNotificationSent = false
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -167,14 +175,28 @@ class TrashCarService : Service(),Listener {
         val notificationId = 22 // Genera un ID único
 
         val notificationIntent = Intent(applicationContext, MapActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(applicationContext, 0, notificationIntent, 0)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
+        val dismissIntent = Intent("com.optic.uberclonekotlin.NOTIFICATION_DISMISSED")
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            this,
+            0,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
         val notification = Notification.Builder(applicationContext, channelId)
             .setContentTitle("¡Alerta de basurero!")
             .setContentText("Un carro basurero está cerca de tu ubicación.")
             .setSmallIcon(R.drawable.icon_pin)
             .setPriority(Notification.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
+            .setDeleteIntent(dismissPendingIntent) // Set the delete intent
             .build()
 
         // Utiliza NotificationManager para mostrar la notificación
@@ -182,5 +204,18 @@ class TrashCarService : Service(),Listener {
         notificationManager.notify(notificationId, notification)
     }
 
+
+    private val notificationDismissedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            isNotificationSent = false
+            Log.d("Notification", "Notification dismissed, isNotificationSent set to false")
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        val filter = IntentFilter("com.optic.uberclonekotlin.NOTIFICATION_DISMISSED")
+        registerReceiver(notificationDismissedReceiver, filter)
+    }
 
 }
